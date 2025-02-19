@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>问卷配置生成器</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #27ae60;
+            --bg-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: 'Segoe UI', system-ui;
+        }
+
+        .config-panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+
+        .input-group {
+            margin: 15px 0;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 100px 1fr;
+            align-items: center;
+        }
+
+        select, input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+
+        .question-list {
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .question-item {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-color);
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .output-area {
+            margin-top: 30px;
+        }
+
+        #configOutput {
+            white-space: pre-wrap;
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+
+        .auto-number { 
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .auto-number input { width: 80px; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="config-panel">
+            <!-- 问卷地址输入 -->
+            <div class="input-group">
+                <label>问卷地址：</label>
+                <input type="text" id="surveyUrl" placeholder="https://www.wjx.cn/vm/XXX.aspx">
+            </div>
+
+            <!-- 题型选择 -->
+            <div class="input-group">
+                <label>题目类型：</label>
+                <select id="questionType" onchange="updateForm()">
+                    <option value="single">单选题</option>
+                    <option value="droplist">下拉题</option>
+                    <option value="multiple">多选题</option>
+                    <option value="matrix">矩阵题</option>
+                    <option value="scale">量表题</option>
+                    <option value="text">填空题</option>
+                </select>
+            </div>
+
+            <!-- 动态表单 -->
+            <div id="dynamicForm"></div>
+
+            <!-- 添加按钮 -->
+            <button onclick="addQuestion()" style="background:var(--success-color)">添加题目</button>
+
+            <!-- 题目列表 -->
+            <div class="question-list" id="questionList"></div>
+        </div>
+
+        <!-- 输出区 -->
+        <div class="output-area">
+            <button onclick="generateConfig()" style="width:100%">生成配置文件</button>
+            <pre id="configOutput"></pre>
+        </div>
+    </div>
+
+    <script>
+        let lastQNumber = 0; // 全局题号计数器
+        let questions = {
+            single: new Map(),
+            droplist: new Map(),
+            multiple: new Map(),
+            matrix: new Map(),
+            scale: new Map(),
+            text: new Map(),
+            textProb: new Map()
+        };
+
+        // 更新表单（不再自动递增题号）
+        function updateForm() {
+            const type = document.getElementById('questionType').value;
+            document.getElementById('dynamicForm').innerHTML = `
+                <div class="input-group auto-number">
+                    <label>当前题号：</label>
+                    <input type="number" id="qNumber" value="${lastQNumber + 1}" min="1" readonly>
+                </div>
+                ${type === 'text' ? `
+                    <div class="input-group">
+                        <label>预填内容：</label>
+                        <input type="text" id="qText" placeholder="用逗号分隔多个内容">
+                    </div>
+                    <div class="input-group">
+                        <label>内容概率：</label>
+                        <input type="text" id="qProb" placeholder="用逗号分隔权重">
+                    </div>
+                ` : `
+                    <div class="input-group">
+                        <label>${getProbLabel(type)}：</label>
+                        <input type="text" id="qProb" placeholder="${getPlaceholder(type)}">
+                    </div>
+                `}
+            `;
+        }
+
+        // 添加题目（仅在成功时递增题号）
+        function addQuestion() {
+            const type = document.getElementById('questionType').value;
+            const qNumber = lastQNumber + 1; // 使用建议题号
+            const qProb = document.getElementById('qProb').value.split(',').map(Number);
+
+            // 输入验证
+            if (qProb.some(isNaN)) {
+                alert('请输入有效的参数');
+                return;
+            }
+
+            // 处理填空题
+            if (type === 'text') {
+                const texts = document.getElementById('qText').value.split(',').map(t => t.trim());
+                if (texts.length === 0) {
+                    alert('请输入预填内容');
+                    return;
+                }
+                questions.text.set(qNumber, texts);
+                questions.textProb.set(qNumber, qProb);
+            } else {
+                if (qProb.length === 0) {
+                    alert('请输入有效参数');
+                    return;
+                }
+                questions[type].set(qNumber, qProb);
+            }
+
+            lastQNumber = qNumber;
+            renderQuestionList();
+            updateForm();
+        }
+
+        function renderQuestionList() {
+            const list = document.getElementById('questionList');
+            list.innerHTML = '';
+
+            for (const [type, items] of Object.entries(questions)) {
+                if (type === 'textProb') continue;
+                
+                items.forEach((value, key) => {
+                    const item = document.createElement('div');
+                    item.className = 'question-item';
+                    item.innerHTML = `
+                        <div style="width:100px">${typeMap[type]}</div>
+                        <div style="width:80px">题号：${key}</div>
+                        <div style="flex:1">参数：${value.join(', ')}</div>
+                        <button onclick="removeQuestion('${type}', ${key})">删除</button>
+                    `;
+                    list.appendChild(item);
+                });
+            }
+        }
+
+        function removeQuestion(type, qNumber) {
+            questions[type].delete(qNumber);
+            if (type === 'text') questions.textProb.delete(qNumber);
+            renderQuestionList();
+        }
+
+        function generateConfig() {
+            const config = {
+                url: document.getElementById('surveyUrl').value || '',
+                single_prob: Object.fromEntries(questions.single),
+                droplist_prob: Object.fromEntries(questions.droplist),
+                multiple_prob: Object.fromEntries(questions.multiple),
+                matrix_prob: Object.fromEntries(questions.matrix),
+                scale_prob: Object.fromEntries(questions.scale),
+                texts: Object.fromEntries(questions.text),
+                texts_prob: Object.fromEntries(questions.textProb)
+            };
+
+            document.getElementById('configOutput').textContent = formatPythonConfig(config);
+        }
+
+        const typeMap = {
+            single: '单选题',
+            droplist: '下拉题',
+            multiple: '多选题',
+            matrix: '矩阵题',
+            scale: '量表题',
+            text: '填空题'
+        };
+
+        function getProbLabel(type) {
+            return {
+                single: '选项权重',
+                droplist: '选项权重',
+                multiple: '选项概率',
+                matrix: '小题权重',
+                scale: '刻度权重'
+            }[type];
+        }
+
+        function getPlaceholder(type) {
+            return {
+                single: '如：4,3,0 → 4:3:0 比例',
+                droplist: '如：2,1,1 → 2:1:1 比例',
+                multiple: '如：90,60 → 90%和60%概率',
+                matrix: '如：1,0 → 全选第一个选项',
+                scale: '如：0,2,3 → 低到高的权重'
+            }[type];
+        }
+
+        function formatPythonConfig(config) {
+            let output = `url = '${config.url}'\n\n`;
+            
+            const sections = [
+                'single_prob', 'droplist_prob', 'multiple_prob',
+                'matrix_prob', 'scale_prob', 'texts', 'texts_prob'
+            ];
+
+            sections.forEach(section => {
+                output += `${section} = ${formatSection(config[section])}\n\n`;
+            });
+
+            return output;
+        }
+
+        function formatSection(data) {
+            if (Object.keys(data).length === 0) return '{}';
+            
+            const entries = Object.entries(data).map(([k, v]) => {
+                const values = Array.isArray(v) ? `[${v.join(', ')}]` : v;
+                return `    "${k}": ${values}`;
+            });
+            
+            return `{\n${entries.join(',\n')}\n}`;
+        }
+
+        // 初始化
+        updateForm();
+    </script>
+</body>
+</html>
