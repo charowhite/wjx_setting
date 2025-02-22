@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>智能问卷配置生成器</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f1c40f;
+            --bg-color: #f8f9fa;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            font-family: 'Segoe UI', system-ui;
+        }
+
+        .config-panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+
+        .input-group {
+            margin: 15px 16px;
+            display: grid;
+            gap: 0px;
+            grid-template-columns: 80px 1fr;
+            align-items: center;
+        }
+
+        select, input {
+            padding: 8px 3px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+
+        .question-list {
+            margin-top: 25px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .question-item {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-color);
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .output-area {
+            margin-top: 30px;
+        }
+
+        #configOutput {
+            white-space: pre-wrap;
+            background: var(--bg-color);
+            padding: 15px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+
+        .auto-number { 
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .auto-number input { width: 80px; }
+
+        .generate-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .generate-control {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .generate-control input[type="number"] {
+            width: 70px;
+            padding: 6px;
+        }
+        .mode-select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-left: 15px;
+            margin-right:15px;
+        }
+        .generate-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 新增样式 */
+        .advanced-config {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .grid-2col {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: -145px
+        }
+        h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            margin-left: 15px;
+            color: var(--primary-color);
+        }
+        .addquestion {
+            margin-top: 25px;
+            margin-left: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    /* 新增移动端适配 */
+    @media (max-width: 768px) {
+        .container {
+            margin: 10px;
+            padding: 10px;
+        }
+
+        .config-panel {
+            padding: 15px;
+        }
+
+        /* 输入组改为纵向布局 */
+        .input-group {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        /* 高级设置网格改为单列 */
+        .grid-2col {
+            grid-template-columns: 1fr;
+        }
+
+        /* 生成面板改为纵向布局 */
+        .generate-panel {
+            grid-template-columns: 1fr;
+        }
+
+        /* 题号输入框缩小 */
+        .auto-number input {
+            width: 60px;
+        }
+
+        /* 题目项改为纵向布局 */
+        .question-item {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 10px;
+        }
+
+        /* 按钮全宽度 */
+        button {
+            width: 100%;
+            padding: 10px;
+        }
+
+        /* 调整高级设置标题边距 */
+        h3 {
+            margin-left: 0;
+            font-size: 1.2rem;
+        }
+
+        /* 修复checkbox错位 */
+        .checkbox-group {
+            margin-left: 0;
+            justify-content: flex-start;
+        }
+
+        /* 选项数量输入框适应 */
+        .generate-control input[type="number"] {
+            width: 100%;
+        }
+
+        /* 输出区域优化 */
+        #configOutput {
+            font-size: 12px;
+            padding: 10px;
+            overflow-x: auto;
+        }
+
+        /* 下拉菜单字号 */
+        select, input {
+            font-size: 14px;
+        }
+    }
+
+    /* 通用响应式优化 */
+    @media (max-width: 480px) {
+        /* 基础字号调整 */
+        body {
+            font-size: 14px;
+        }
+        
+        /* 题目类型下拉菜单优化 */
+        #questionType {
+            font-size: 13px;
+        }
+
+        /* 生成按钮组纵向排列 */
+        .generate-buttons {
+            flex-direction: column;
+        }
+
+        /* 移动端隐藏非必要标签 */
+        .question-item div:first-child {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="config-panel">
+            <!-- 问卷地址 -->
+            <div class="input-group">
+                <label>问卷地址：</label>
+                <input type="text" id="surveyUrl" placeholder="https://www.wjx.cn/vm/XXX.aspx">
+            </div>
+
+            <!-- 高级设置 -->
+            <div class="advanced-config">
+                <h3>高级设置</h3>
+                <div class="grid-2col">
+                    <div class="input-group">
+                        <label>目标数量：</label>
+                        <input type="number" id="targetCount" value="2" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>失败阈值：</label>
+                        <input type="number" id="topFail" value="5" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>线程数量：</label>
+                        <input type="number" id="thread_count" value="2" min="1">
+                    </div>
+                    <div class="input-group">
+                        <label>页面延迟：</label>
+                        <input type="number" id="page_delay" value="30" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label>代理IP：</label>
+                        <input class="checkbox-group" type="checkbox" id="useIp" style="margin-left: 3px; margin-bottom: 0px; width: 20px;height: 20px; margin-top: 3px;">
+                    </div>
+                    <div class="input-group">
+                        <label>IP API：</label>
+                        <input type="text" id="ip_api" placeholder="代理API地址">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 题目配置 -->
+            <div class="input-group">
+                <label>题目类型：</label>
+                <select id="questionType" onchange="updateForm()">
+                    <option value="single">单选题</option>
+                    <option value="droplist">下拉题</option>
+                    <option value="multiple">多选题</option>
+                    <option value="matrix">矩阵题</option>
+                    <option value="scale">量表题</option>
+                    <option value="text">填空题</option>
+                </select>
+            </div>
+
+            <div id="dynamicForm"></div>
+            <div class="addquestion">
+            <button onclick="addQuestion()" style="background:var(--success-color)" >添加题目</button>
+            </div>
+            <div class="question-list" id="questionList"></div>
+        </div>
+
+        <div class="output-area">
+            <button onclick="generateConfig()" style="width:100%">生成配置文件</button>
+            <pre id="configOutput"></pre>
+        </div>
+    </div>
+
+    <script>
+        let lastQNumber = 0;
+        let questions = {
+            single: new Map(),
+            droplist: new Map(),
+            multiple: new Map(),
+            matrix: new Map(),
+            scale: new Map(),
+            text: new Map(),
+            textProb: new Map()
+        };
+
+        // 更新表单函数
+        function updateForm() {
+        const type = document.getElementById('questionType').value;
+        const isText = type === 'text';
+        const isMultiple = type === 'multiple';
+        
+        document.getElementById('dynamicForm').innerHTML = `
+            <div class="input-group auto-number">
+                <label>当前题号：</label>
+                <input type="number" id="qNumber" value="${lastQNumber + 1}">
+            </div>
+
+            ${isText ? `
+                <div class="input-group">
+                    <label>预填内容：</label>
+                    <input type="text" id="qText" placeholder="用逗号分隔多个内容">
+                </div>
+            ` : ''}
+
+            <div class="generate-panel">
+                <div class="generate-control">
+                    <select class="mode-select" onchange="toggleGenerateMode(this.value)">
+                        <option value="manual">手动输入</option>
+                        <option value="auto">自动生成</option>
+                    </select>
+                    <input type="number" id="optionCount" placeholder="答案数量" min="1" value="3">
+                    <div class="generate-buttons">
+                        <button onclick="generateProbabilities('random')" style="background:var(--warning-color)">随机分布</button>
+                        <button onclick="generateProbabilities('uniform')" style="background:var(--primary-color)">均匀分布</button>
+                    </div>
+                </div>
+                <div class="generate-control"">
+                    <input type="text" id="qProb" placeholder="${getPlaceholder(type)}">
+                </div>
+            </div>
+        `;
+
+        if(isMultiple) {
+            document.getElementById('qProb').placeholder = "每个选项概率（0-100），如：80,60,40";
+        } else if(isText) {
+            document.getElementById('qProb').placeholder = "内容概率权重（逗号分隔）";
+        }
+
+        toggleGenerateMode('manual');
+    }
+
+        // 切换生成模式
+        function toggleGenerateMode(mode) {
+            const countInput = document.getElementById('optionCount');
+            const genButtons = document.querySelector('.generate-buttons');
+            countInput.style.display = mode === 'auto' ? 'block' : 'none';
+            genButtons.style.display = mode === 'auto' ? 'flex' : 'none';
+        }
+
+        // 生成概率
+        function generateProbabilities(mode) {
+        const type = document.getElementById('questionType').value;
+        const count = parseInt(document.getElementById('optionCount').value) || 0;
+        const isText = type === 'text';
+        const isMultiple = type === 'multiple';
+
+        if (count < 1) {
+            alert('请输入有效的选项数量');
+            return;
+        }
+
+        let baseValue;
+        if (mode === 'uniform') {
+            baseValue = isMultiple ? 80 : (isText ? 1 : 1); // 文本题保持权重模式
+        } else {
+            baseValue = isMultiple ? 100 : (isText ? 9 : 9);
+        }
+
+        const probabilities = mode === 'random' 
+            ? Array.from({length: count}, () => Math.floor(Math.random() * baseValue + 1)) 
+            : Array(count).fill(baseValue);
+
+        document.getElementById('qProb').value = probabilities.join(', ');
+    }
+
+        // 添加题目
+        function addQuestion() {
+            const type = document.getElementById('questionType').value;
+            const qNumberInput = document.getElementById('qNumber').value;
+            const qNumber = parseInt(qNumberInput);
+
+            if (isNaN(qNumber) || qNumber < 1) {
+                alert('请输入有效的题号');
+                return;
+            }
+
+            // 检查题号是否已存在
+            let exists = false;
+            for (const t of Object.keys(questions)) {
+                if (t === 'textProb') continue;
+                if (questions[t].has(qNumber)) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (exists) {
+                alert('题号已存在，请选择其他题号');
+                return;
+            }
+
+            let qProb, texts;
+        if (type === 'text') {
+            texts = document.getElementById('qText').value.split(',').map(t => t.trim());
+            qProb = document.getElementById('qProb').value.split(',').map(Number);
+            if (texts.length === 0 || qProb.length !== texts.length) {
+                alert('内容和概率数量不匹配');
+                return;
+            }
+        } else {
+            qProb = document.getElementById('qProb').value.split(',').map(Number);
+            if (qProb.length === 0) {
+                alert('请输入有效参数');
+                return;
+            }
+            
+            if(type === 'multiple' && qProb.some(p => p < 0 || p > 100)) {
+                alert('多选题概率需在0-100之间');
+                return;
+            }
+        }
+
+        if (type === 'text') {
+            questions.text.set(qNumber, texts);
+            questions.textProb.set(qNumber, qProb); // 仍存储到textProb
+        } else {
+            questions[type].set(qNumber, qProb);
+        }
+
+            if (qNumber > lastQNumber) {
+                lastQNumber = qNumber;
+            }
+
+            renderQuestionList();
+            updateForm();
+        }
+
+        // 渲染题目列表
+        function renderQuestionList() {
+            const list = document.getElementById('questionList');
+            list.innerHTML = '';
+
+            for (const [type, items] of Object.entries(questions)) {
+                if (type === 'textProb') continue;
+                
+                items.forEach((value, key) => {
+                    const item = document.createElement('div');
+                    item.className = 'question-item';
+                    item.innerHTML = `
+                        <div style="width:100px">${typeMap[type]}</div>
+                        <div style="width:80px">题号：${key}</div>
+                        <div style="flex:1">参数：${value.join(', ')}</div>
+                        <button onclick="removeQuestion('${type}', ${key})">删除</button>
+                    `;
+                    list.appendChild(item);
+                });
+            }
+        }
+
+        // 删除题目
+        function removeQuestion(type, qNumber) {
+            questions[type].delete(qNumber);
+            if (type === 'text') questions.textProb.delete(qNumber);
+
+            // 调整所有大于当前题号的题目
+            for (const t of Object.keys(questions)) {
+                if (t === 'textProb') continue;
+                const entries = Array.from(questions[t].entries());
+                for (const [key, value] of entries) {
+                    if (key > qNumber) {
+                        questions[t].delete(key);
+                        questions[t].set(key - 1, value);
+                    }
+                }
+            }
+            // 调整textProb
+            const textProbEntries = Array.from(questions.textProb.entries());
+            for (const [key, value] of textProbEntries) {
+                if (key > qNumber) {
+                    questions.textProb.delete(key);
+                    questions.textProb.set(key - 1, value);
+                }
+            }
+
+            // 更新lastQNumber
+            let maxQ = 0;
+            for (const [t, items] of Object.entries(questions)) {
+                if (t === 'textProb') continue;
+                for (const key of items.keys()) {
+                    if (key > maxQ) maxQ = key;
+                }
+            }
+            lastQNumber = maxQ;
+
+            renderQuestionList();
+            updateForm();
+        }
+
+        // 生成配置文件
+        function generateConfig() {
+        const config = {
+            url: document.getElementById('surveyUrl').value || '',
+            targetCount: parseInt(document.getElementById('targetCount').value) || 2,
+            topFail: parseInt(document.getElementById('topFail').value) || 5,
+            thread_count: parseInt(document.getElementById('thread_count').value) || 2,
+            useIp: document.getElementById('useIp').checked,
+            ip_api: document.getElementById('ip_api').value || '',
+            page_delay: parseInt(document.getElementById('page_delay').value) || 30,
+            
+            // 题目配置
+            single_prob: Object.fromEntries(questions.single),
+            droplist_prob: Object.fromEntries(questions.droplist),
+            multiple_prob: Object.fromEntries(questions.multiple),
+            matrix_prob: Object.fromEntries(questions.matrix),
+            scale_prob: Object.fromEntries(questions.scale),
+            texts: Object.fromEntries(questions.text),
+            texts_prob: Object.fromEntries(questions.textProb)
+        };
+
+        // 生成格式化JSON并进行正则替换
+        let jsonString = JSON.stringify(config, null, 4);
+        // 将数组内的换行和缩进替换为单行格式
+        jsonString = jsonString.replace(/\[\n\s+([^\]]+?)\n\s+\]/g, (match, p1) => {
+            return `[${p1.replace(/\n\s+/g, ' ')}]`;
+        });
+        document.getElementById('configOutput').textContent = jsonString;
+    }
+
+        // 类型映射
+        const typeMap = {
+            single: '单选题',
+            droplist: '下拉题',
+            multiple: '多选题',
+            matrix: '矩阵题',
+            scale: '量表题',
+            text: '填空题'
+        };
+
+        // 获取占位符文本
+        function getPlaceholder(type) {
+            return {
+                single: '点击上方生成按钮自动创建权重',
+                droplist: '点击上方生成按钮自动创建权重',
+                multiple: '每个选项概率（0-100）',
+                matrix: '小题权重',
+                scale: '刻度权重'
+            }[type];
+        }
+
+        // 初始化表单
+        updateForm();
+    </script>
+</body>
+</html>
