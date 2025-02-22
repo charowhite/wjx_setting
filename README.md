@@ -8,6 +8,8 @@ Optimized the UI interface and fixed some bugs.
 <b> Note: This project is still being updated, and will support automatic reading of the question types in the future and can be manually or automatically configured.</b>  
 ## Updated February 22, 2025 v1.2  
 <b> Fixed some UI bugs. Adapted mobile UI. </b>  
+## Updated February 22, 2025 v1.3  
+<b> Fixed some UI bugs. </b>  
 ### !mportant 
 #### The hidden options of the questionnaire must also be configured, because the program will recognize that the option parameters do not match, which will cause the program to not run normally. <br>It is recommended to delete this option or configure a probability of 0 for this option.  
 
